@@ -1,61 +1,38 @@
-from huggingface_hub import login
+from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
-import requests
-from PIL import Image
-from transformers import MllamaForConditionalGeneration, AutoProcessor
 
+model_id = "meta-llama/Meta-Llama-3-8B-Instruct"
 
-# Authenticate with Hugging Face
-huggingface_token = "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"
-login(token=huggingface_token)
-
-
-# Define model ID and load the model with specified dtype and device mapping
-model_id = "meta-llama/Llama-3.2-11B-Vision-Instruct"
-
-model = MllamaForConditionalGeneration.from_pretrained(
+tokenizer = AutoTokenizer.from_pretrained(model_id)
+model = AutoModelForCausalLM.from_pretrained(
     model_id,
     torch_dtype=torch.bfloat16,
     device_map="auto",
 )
-processor = AutoProcessor.from_pretrained(model_id)
 
-# Fetch image from URL
-url = "https://huggingface.co/datasets/huggingface/documentation-images/resolve/0052a70beed5bf71b92610a43a52df6d286cd5f3/diffusers/rabbit.jpg"
-image = Image.open(requests.get(url, stream=True).raw)
-
-# Define chat input with a storytelling prompt
 messages = [
-    {"role": "user", "content": [
-        {"type": "image"},
-        {"type": "text", "text": "Imagine this rabbit is an explorer. Tell a short story about its latest adventure: "}
-    ]}
+    {"role": "system", "content": "You are an AI assistant with expertise in natural language processing and AI model configuration."},
+    {"role": "user", "content": "What would happen to the responses if we set the temperature to a low value like 0.3 versus a high value like 1.0? Could you explain how it would change the style and predictability of the model's answers?"},
 ]
 
-# Process input with chat template
-input_text = processor.apply_chat_template(messages, add_generation_prompt=True)
-inputs = processor(
-    image,
-    input_text,
-    add_special_tokens=False,
-    return_tensors="pt",
+input_ids = tokenizer.apply_chat_template(
+    messages,
+    add_generation_prompt=True,
+    return_tensors="pt"
 ).to(model.device)
 
-# Generate output with additional hyperparameters for creativity
-output = model.generate(
-    **inputs,
-    max_new_tokens=100,      # Allows a bit longer output for storytelling
-    temperature=0.8,         # Adds some creativity to the output
-    top_k=50,                # Limits token options for diverse outputs
-    top_p=0.9,               # Nucleus sampling for varied word choice
-    repetition_penalty=1.2,  # Reduces repetitive phrases
-    num_beams=5,             # Uses beam search to refine story quality
-    do_sample=True,          # Enables sampling for more diverse outputs
-    length_penalty=1.0       # Balances output length preference
+terminators = [
+    tokenizer.eos_token_id,
+    tokenizer.convert_tokens_to_ids("<|eot_id|>")
+]
+
+outputs = model.generate(
+    input_ids,
+    max_new_tokens=2048,
+    eos_token_id=terminators,
+    do_sample=True,
+    temperature=0.6,
+    top_p=0.9,
 )
-
-# Decode and print the generated story
-print(processor.decode(output[0]))
-
-
-
+response = outputs[0][input_ids.shape[-1]:]
+print(tokenizer.decode(response, skip_special_tokens=True))
