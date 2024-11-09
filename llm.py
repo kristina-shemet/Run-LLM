@@ -3,15 +3,10 @@ import torch
 import requests
 from PIL import Image
 from transformers import MllamaForConditionalGeneration, AutoProcessor
-from dotenv import load_dotenv
-import os
 
-
-# Load environment variables
-load_dotenv()
 
 # Authenticate with Hugging Face
-huggingface_token = os.getenv("HUGGINGFACE_TOKEN")
+huggingface_token = "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"
 login(token=huggingface_token)
 
 
