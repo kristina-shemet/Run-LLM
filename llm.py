@@ -1,5 +1,10 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
+from huggingface_hub import login
+
+# Authenticate with Hugging Face
+huggingface_token = "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"
+login(token=huggingface_token)
 
 model_id = "meta-llama/Meta-Llama-3-8B-Instruct"
 
